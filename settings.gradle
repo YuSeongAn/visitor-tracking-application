@@ -1,0 +1,4 @@
+rootProject.name = 'visitor-tracking'
+include 'visitor-api'
+include 'visitor-domain'
+include 'visitor-consumer-application'
