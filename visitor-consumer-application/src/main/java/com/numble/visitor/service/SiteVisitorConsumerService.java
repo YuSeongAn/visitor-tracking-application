@@ -8,6 +8,8 @@ import com.numble.visitor.domain.repository.SiteVisitorStatisticRepository;
 import com.numble.visitor.holder.ObjectMapperHolder;
 import com.numble.visitor.service.event.SiteVisited;
 import lombok.RequiredArgsConstructor;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +23,10 @@ import java.util.Arrays;
 public class SiteVisitorConsumerService {
     private static final String SITE_VISITED_TOPIC_NAME = "siteVisited";
 
+    private static final String SITE_VISITOR_COUNT_LOCK_NAME = "site_visitor_count";
+
     private final SiteRepository siteRepository;
+    private final RedissonClient redissonClient;
     private final SiteVisitorStatisticRepository siteVisitorStatisticRepository;
 
     @Transactional
@@ -37,12 +42,21 @@ public class SiteVisitorConsumerService {
                         .siteRootPath(siteRootPath)
                         .build()));
 
-        increaseVisitorCountByEachPeriodType(site, visitedDateTime);
+        final RLock lock = redissonClient.getLock(SITE_VISITOR_COUNT_LOCK_NAME);
+
+        try {
+            lock.lock();
+            increaseVisitorCountByEachPeriodType(site, visitedDateTime);
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     private void increaseVisitorCountByEachPeriodType(Site site, LocalDateTime visitedDateTime) {
         Arrays.stream(PeriodType.values())
-                .forEach(periodType -> siteVisitorStatisticRepository.findSiteVisitorStatisticWithLockByStandardDateTimeAndSiteAndPeriodType(
+                .forEach(periodType -> siteVisitorStatisticRepository.findSiteVisitorStatisticByStandardDateTimeAndSiteAndPeriodType(
                                 periodType.calculateStandardDateTime(visitedDateTime), site, periodType)
                         .ifPresentOrElse(SiteVisitorStatistic::increaseVisitorCount, () -> createNewSiteVisitorStatistic(site, periodType, visitedDateTime)));
     }

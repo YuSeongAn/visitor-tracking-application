@@ -26,6 +26,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.kafka:spring-kafka:2.9.12'
     implementation 'org.apache.kafka:kafka-clients:2.8.0'
+    implementation 'org.redisson:redisson:3.23.5'
     implementation project(':visitor-domain')
 
     compileOnly 'org.projectlombok:lombok'
