@@ -7,7 +7,8 @@ import com.numble.visitor.domain.repository.SiteRepository;
 import com.numble.visitor.domain.repository.SiteVisitorStatisticRepository;
 import com.numble.visitor.holder.ObjectMapperHolder;
 import com.numble.visitor.service.event.SiteVisited;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 
 @Service
-@RequiredArgsConstructor
 public class SiteVisitorConsumerService {
     private static final String SITE_VISITED_TOPIC_NAME = "siteVisited";
 
@@ -28,10 +28,22 @@ public class SiteVisitorConsumerService {
     private final SiteRepository siteRepository;
     private final RedissonClient redissonClient;
     private final SiteVisitorStatisticRepository siteVisitorStatisticRepository;
+    private final Timer timer;
+
+    public SiteVisitorConsumerService(SiteRepository siteRepository, RedissonClient redissonClient, SiteVisitorStatisticRepository siteVisitorStatisticRepository, MeterRegistry meterRegistry) {
+        this.siteRepository = siteRepository;
+        this.redissonClient = redissonClient;
+        this.siteVisitorStatisticRepository = siteVisitorStatisticRepository;
+        this.timer = Timer.builder("kafka_consumer_processing_time")
+                .description("Kafka Consumer Event Processing Time")
+                .register(meterRegistry);
+    }
 
     @Transactional
     @KafkaListener(id = "visitor-count-increase-consumer", topics = SITE_VISITED_TOPIC_NAME, concurrency = "5")
     public void increaseVisitorCount(String sitedVisitedJson) {
+        Timer.Sample sample = Timer.start();
+
         final SiteVisited siteVisited = ObjectMapperHolder.readValue(sitedVisitedJson, SiteVisited.class);
 
         final String siteRootPath = siteVisited.getSiteRootPath();
@@ -51,6 +63,8 @@ public class SiteVisitorConsumerService {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
+
+            sample.stop(timer);
         }
     }
 
