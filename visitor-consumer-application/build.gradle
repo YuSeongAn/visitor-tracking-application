@@ -27,6 +27,9 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka:2.9.12'
     implementation 'org.apache.kafka:kafka-clients:2.8.0'
     implementation 'org.redisson:redisson:3.23.5'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation project(':visitor-domain')
 
     compileOnly 'org.projectlombok:lombok'
