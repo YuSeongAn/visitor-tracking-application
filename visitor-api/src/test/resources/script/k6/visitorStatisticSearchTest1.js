@@ -7,7 +7,7 @@ export let options = {
 };
 
 export default function () {
-    let response = http.post('http://numble.com:8080/site/visitor?siteRootPath=loadTest7');
+    let response = http.get('http://numble.com:8080/site/visitor-statistics?siteRootPath=loadTest5');
 
     check(response, {
         'is status 200': (r) => r.status === 200,

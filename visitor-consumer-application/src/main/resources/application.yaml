@@ -1,5 +1,6 @@
 spring:
   profiles:
     include: jpa, kafka, redis
+
 server:
   port: 8081
